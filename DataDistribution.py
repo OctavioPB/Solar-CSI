@@ -2,7 +2,7 @@
 """
 California Solar Initiative: Dataset distribution and Statistics
 
-@author: Octavio Perez Bravo
+By: Octavio Perez Bravo
 """
 
 import pandas as pd
