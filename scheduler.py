@@ -31,10 +31,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Module-level cache (shared across all Streamlit sessions)
 # ---------------------------------------------------------------------------
-_lock: threading.Lock         = threading.Lock()
-_df_full: pd.DataFrame | None     = None
-_df_filtered: pd.DataFrame | None = None
-_last_refreshed: datetime | None  = None
+_lock: threading.Lock              = threading.Lock()
+_df_full: pd.DataFrame | None      = None
+_df_filtered: pd.DataFrame | None  = None
+_last_refreshed: datetime | None   = None
+_last_error: str | None            = None
 _scheduler: BackgroundScheduler | None = None
 
 
@@ -76,6 +77,11 @@ def last_refreshed() -> datetime | None:
     return _last_refreshed
 
 
+def last_error() -> str | None:
+    """Return the error message from the most recent failed refresh, or None."""
+    return _last_error
+
+
 def force_refresh() -> None:
     """Immediately re-download (if stale) and reload the DataFrames."""
     logger.info("Manual refresh triggered.")
@@ -87,14 +93,16 @@ def force_refresh() -> None:
 # ---------------------------------------------------------------------------
 
 def _do_refresh() -> None:
-    global _df_full, _df_filtered, _last_refreshed
+    global _df_full, _df_filtered, _last_refreshed, _last_error
     try:
         loader.download_if_stale()
         df_full, df_filtered = processor.load()
         with _lock:
-            _df_full      = df_full
-            _df_filtered  = df_filtered
+            _df_full        = df_full
+            _df_filtered    = df_filtered
             _last_refreshed = datetime.now()
+            _last_error     = None
         logger.info("Cache refreshed at %s — %d rows.", _last_refreshed, len(df_full))
     except Exception as exc:
+        _last_error = str(exc)
         logger.error("Refresh failed: %s", exc, exc_info=True)

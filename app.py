@@ -6,6 +6,7 @@ Run with:  streamlit run app.py
 
 import logging
 
+import pandas as pd
 import streamlit as st
 
 import config
@@ -18,12 +19,13 @@ logging.basicConfig(
 )
 
 # ---------------------------------------------------------------------------
-# Page config
+# Page config (must be first Streamlit call)
 # ---------------------------------------------------------------------------
 st.set_page_config(
     page_title="California Solar Initiative Dashboard",
     page_icon="☀️",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # ---------------------------------------------------------------------------
@@ -34,25 +36,43 @@ def _start_scheduler():
     scheduler.start()
     return True
 
-_start_scheduler()
+with st.spinner("Loading data…"):
+    _start_scheduler()
 
 # ---------------------------------------------------------------------------
-# Load data from cache
+# Load data from shared cache
 # ---------------------------------------------------------------------------
 df_full, df_filtered = scheduler.get_data()
+
+if df_full is None or df_filtered is None:
+    st.error(
+        "Data could not be loaded. Check that `WorkingDataSet.csv` exists "
+        "in the project directory and restart the app."
+    )
+    st.stop()
 
 # ---------------------------------------------------------------------------
 # Sidebar — filters
 # ---------------------------------------------------------------------------
 with st.sidebar:
     st.title("☀️ CSI Dashboard")
+
+    # -- Download error banner ------------------------------------------------
+    err = scheduler.last_error()
+    if err:
+        st.warning(
+            f"Last data refresh failed — showing cached data.\n\n`{err}`",
+            icon="⚠️",
+        )
+
     st.markdown("---")
 
     # -- Outlier toggle -------------------------------------------------------
     show_outliers = st.toggle(
         "Include outliers",
         value=False,
-        help="When off, records beyond 1 standard deviation in cost or incentive are excluded.",
+        help="When off, records beyond 1 standard deviation in cost or "
+             "incentive are excluded from all charts.",
     )
     base_df = df_full if show_outliers else df_filtered
 
@@ -96,7 +116,7 @@ with st.sidebar:
         placeholder="All statuses",
     )
 
-    # -- Data freshness -------------------------------------------------------
+    # -- Data freshness + manual refresh --------------------------------------
     st.markdown("---")
     refreshed_at = scheduler.last_refreshed()
     if refreshed_at:
@@ -104,37 +124,77 @@ with st.sidebar:
     else:
         st.caption("Data not yet loaded.")
 
-    if st.button("🔄 Refresh Now"):
-        with st.spinner("Downloading latest data…"):
+    if st.button("🔄 Refresh Now", use_container_width=True):
+        with st.spinner("Checking for latest data…"):
             scheduler.force_refresh()
-        st.success("Data refreshed.")
+        if scheduler.last_error():
+            st.error("Refresh failed. Using existing local data.")
+        else:
+            st.success("Data refreshed.")
         st.rerun()
 
+    st.markdown("---")
+    st.caption(
+        "Source: [CA Solar Statistics](https://www.californiasolarstatistics.ca.gov/) · "
+        "Program closed ~2019"
+    )
+
 # ---------------------------------------------------------------------------
-# Apply filters to base DataFrame
+# Apply filters
 # ---------------------------------------------------------------------------
-df = base_df.copy()
+@st.cache_data
+def _apply_filters(
+    base_hash: int,
+    year_range: tuple,
+    counties: list,
+    sectors_sel: list,
+    statuses: list,
+) -> pd.DataFrame:
+    """Cache the filter result keyed on the base DataFrame hash + filter values."""
+    df = base_df.copy()
+    df = df[df[config.COL_YEAR].between(year_range[0], year_range[1])]
+    if counties:
+        df = df[df[config.COL_COUNTY].isin(counties)]
+    if sectors_sel:
+        df = df[df[config.COL_OWNER_SECTOR].isin(sectors_sel)]
+    if statuses:
+        df = df[df[config.COL_STATUS].isin(statuses)]
+    return df
 
-df = df[df[config.COL_YEAR].between(year_range[0], year_range[1])]
+df = _apply_filters(
+    id(base_df),
+    year_range,
+    selected_counties,
+    selected_sectors,
+    selected_statuses,
+)
 
-if selected_counties:
-    df = df[df[config.COL_COUNTY].isin(selected_counties)]
-
-if selected_sectors:
-    df = df[df[config.COL_OWNER_SECTOR].isin(selected_sectors)]
-
-if selected_statuses:
-    df = df[df[config.COL_STATUS].isin(selected_statuses)]
+# ---------------------------------------------------------------------------
+# Empty-result guard
+# ---------------------------------------------------------------------------
+if df.empty:
+    st.warning("No records match the current filters. Try broadening your selection.")
+    st.stop()
 
 # ---------------------------------------------------------------------------
 # Main layout
 # ---------------------------------------------------------------------------
 st.title("California Solar Initiative Dashboard")
-st.caption(
-    f"Showing **{len(df):,}** records"
-    + (f" · outliers included" if show_outliers else "")
-    + (f" · {year_range[0]}–{year_range[1]}" if year_range != (year_min, year_max) else "")
-)
+
+active_filters = []
+if year_range != (year_min, year_max):
+    active_filters.append(f"{year_range[0]}–{year_range[1]}")
+if selected_counties:
+    active_filters.append(", ".join(selected_counties))
+if selected_sectors:
+    active_filters.append(", ".join(selected_sectors))
+if selected_statuses:
+    active_filters.append(", ".join(selected_statuses))
+if show_outliers:
+    active_filters.append("outliers included")
+
+filter_text = " · ".join(active_filters) if active_filters else "all records"
+st.caption(f"Showing **{len(df):,}** of **{len(base_df):,}** records · {filter_text}")
 
 st.divider()
 overview.render(df)
