@@ -373,10 +373,15 @@ _HERO_TEMPLATE = """
 
     <h1 style="
         font-family:'Fraunces',Georgia,serif;
-        font-size:48px; font-weight:300;
-        color:white; margin:0 0 16px 0; line-height:1.15;
+        font-size:48px;
+        font-weight:300;
+        color:white;
+        margin:0 0 16px 0;
+        line-height:1.15;
     ">
-        California <em style="color:#E8C46A; font-style:italic;">Solar</em> Initiative
+        <span style="color:white;">California</span>
+        <em style="color:#E8C46A; font-style:italic;">Solar</em>
+        <span style="color:white;">Initiative</span>
     </h1>
 
     <p style="
