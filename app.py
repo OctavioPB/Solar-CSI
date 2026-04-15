@@ -11,6 +11,7 @@ import streamlit as st
 
 import config
 import scheduler
+import styles
 from components import contractors, financials, geo, overview, sectors, timeseries
 
 logging.basicConfig(
@@ -22,11 +23,16 @@ logging.basicConfig(
 # Page config (must be first Streamlit call)
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="California Solar Initiative Dashboard",
+    page_title="CSI Dashboard · OPB",
     page_icon="☀️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ---------------------------------------------------------------------------
+# Brand injection (second call — before any visible output)
+# ---------------------------------------------------------------------------
+styles.inject_brand()
 
 # ---------------------------------------------------------------------------
 # Boot scheduler exactly once per server process
@@ -46,24 +52,29 @@ df_full, df_filtered = scheduler.get_data()
 
 if df_full is None or df_filtered is None:
     st.error(
-        "Data could not be loaded. Check that `WorkingDataSet.csv` exists "
-        "in the project directory and restart the app."
+        "Data could not be loaded. Ensure `WorkingDataSet.csv` exists in the "
+        "project root and restart the app."
     )
     st.stop()
 
 # ---------------------------------------------------------------------------
-# Sidebar — filters
+# Sidebar
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.title("☀️ CSI Dashboard")
+    st.markdown(
+        "<p style='font-family:Fraunces,Georgia,serif; font-size:22px; "
+        "color:white; letter-spacing:-0.5px; margin:8px 0 4px;'>"
+        "O<em style='color:#E8C46A;'>PB</em></p>"
+        "<p style='font-family:Plus Jakarta Sans,sans-serif; font-size:9px; "
+        "letter-spacing:3px; text-transform:uppercase; "
+        "color:rgba(255,255,255,0.4); margin:0 0 12px;'>CSI Analysis</p>",
+        unsafe_allow_html=True,
+    )
 
-    # -- Download error banner ------------------------------------------------
+    # -- Download error banner -----------------------------------------------
     err = scheduler.last_error()
     if err:
-        st.warning(
-            f"Last data refresh failed — showing cached data.\n\n`{err}`",
-            icon="⚠️",
-        )
+        st.warning(f"Last refresh failed — using cached data.\n\n`{err}`", icon="⚠️")
 
     st.markdown("---")
 
@@ -71,58 +82,44 @@ with st.sidebar:
     show_outliers = st.toggle(
         "Include outliers",
         value=False,
-        help="When off, records beyond 1 standard deviation in cost or "
-             "incentive are excluded from all charts.",
+        help="When off, records with |z-score| > 1 on cost or incentive are excluded.",
     )
     base_df = df_full if show_outliers else df_filtered
 
     st.markdown("---")
-    st.subheader("Filters")
+    st.markdown(
+        "<p style='font-family:Plus Jakarta Sans,sans-serif; font-size:9px; "
+        "letter-spacing:3px; text-transform:uppercase; color:rgba(255,255,255,0.4); "
+        "margin:0 0 12px;'>Filters</p>",
+        unsafe_allow_html=True,
+    )
 
-    # -- Year range -----------------------------------------------------------
+    # -- Year range ----------------------------------------------------------
     valid_years = base_df[config.COL_YEAR].dropna()
     year_min, year_max = int(valid_years.min()), int(valid_years.max())
-    year_range = st.slider(
-        "Completion year",
-        min_value=year_min,
-        max_value=year_max,
-        value=(year_min, year_max),
-    )
+    year_range = st.slider("Completion year", min_value=year_min,
+                           max_value=year_max, value=(year_min, year_max))
 
-    # -- County ---------------------------------------------------------------
+    # -- County --------------------------------------------------------------
     all_counties = sorted(base_df[config.COL_COUNTY].dropna().unique().tolist())
-    selected_counties = st.multiselect(
-        "County",
-        options=all_counties,
-        default=[],
-        placeholder="All counties",
-    )
+    selected_counties = st.multiselect("County", options=all_counties,
+                                       default=[], placeholder="All counties")
 
-    # -- Sector ---------------------------------------------------------------
+    # -- Sector --------------------------------------------------------------
     all_sectors = sorted(base_df[config.COL_OWNER_SECTOR].dropna().unique().tolist())
-    selected_sectors = st.multiselect(
-        "Sector",
-        options=all_sectors,
-        default=[],
-        placeholder="All sectors",
-    )
+    selected_sectors = st.multiselect("Sector", options=all_sectors,
+                                      default=[], placeholder="All sectors")
 
-    # -- Application status ---------------------------------------------------
+    # -- Status --------------------------------------------------------------
     all_statuses = sorted(base_df[config.COL_STATUS].dropna().unique().tolist())
-    selected_statuses = st.multiselect(
-        "Application status",
-        options=all_statuses,
-        default=[],
-        placeholder="All statuses",
-    )
+    selected_statuses = st.multiselect("Application status", options=all_statuses,
+                                       default=[], placeholder="All statuses")
 
-    # -- Data freshness + manual refresh --------------------------------------
+    # -- Refresh + timestamp -------------------------------------------------
     st.markdown("---")
     refreshed_at = scheduler.last_refreshed()
     if refreshed_at:
-        st.caption(f"Data last updated: {refreshed_at.strftime('%Y-%m-%d %H:%M')}")
-    else:
-        st.caption("Data not yet loaded.")
+        st.caption(f"Updated: {refreshed_at.strftime('%Y-%m-%d %H:%M')}")
 
     if st.button("🔄 Refresh Now", use_container_width=True):
         with st.spinner("Checking for latest data…"):
@@ -135,22 +132,15 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption(
-        "Source: [CA Solar Statistics](https://www.californiasolarstatistics.ca.gov/) · "
-        "Program closed ~2019"
+        "[californiasolarstatistics.ca.gov](https://www.californiasolarstatistics.ca.gov/) "
+        "· Program closed 2019"
     )
 
 # ---------------------------------------------------------------------------
 # Apply filters
 # ---------------------------------------------------------------------------
 @st.cache_data
-def _apply_filters(
-    base_hash: int,
-    year_range: tuple,
-    counties: list,
-    sectors_sel: list,
-    statuses: list,
-) -> pd.DataFrame:
-    """Cache the filter result keyed on the base DataFrame hash + filter values."""
+def _apply_filters(base_id, year_range, counties, sectors_sel, statuses):
     df = base_df.copy()
     df = df[df[config.COL_YEAR].between(year_range[0], year_range[1])]
     if counties:
@@ -162,16 +152,9 @@ def _apply_filters(
     return df
 
 df = _apply_filters(
-    id(base_df),
-    year_range,
-    selected_counties,
-    selected_sectors,
-    selected_statuses,
+    id(base_df), year_range, selected_counties, selected_sectors, selected_statuses
 )
 
-# ---------------------------------------------------------------------------
-# Empty-result guard
-# ---------------------------------------------------------------------------
 if df.empty:
     st.warning("No records match the current filters. Try broadening your selection.")
     st.stop()
@@ -179,37 +162,62 @@ if df.empty:
 # ---------------------------------------------------------------------------
 # Main layout
 # ---------------------------------------------------------------------------
-st.title("California Solar Initiative Dashboard")
+styles.navbar()
+styles.hero(
+    subtitle=(
+        f"Showing <strong>{len(df):,}</strong> of <strong>{len(base_df):,}</strong> "
+        f"records &nbsp;·&nbsp; {year_range[0]}–{year_range[1]} &nbsp;·&nbsp; "
+        f"{'Outliers included' if show_outliers else 'Outliers excluded'}"
+    )
+)
 
-active_filters = []
-if year_range != (year_min, year_max):
-    active_filters.append(f"{year_range[0]}–{year_range[1]}")
-if selected_counties:
-    active_filters.append(", ".join(selected_counties))
-if selected_sectors:
-    active_filters.append(", ".join(selected_sectors))
-if selected_statuses:
-    active_filters.append(", ".join(selected_statuses))
-if show_outliers:
-    active_filters.append("outliers included")
-
-filter_text = " · ".join(active_filters) if active_filters else "all records"
-st.caption(f"Showing **{len(df):,}** of **{len(base_df):,}** records · {filter_text}")
-
-st.divider()
+# -- 01 Overview -------------------------------------------------------------
+styles.section_eyebrow("01 · Overview")
+styles.section_title("Program at a glance", emphasis="glance")
+styles.section_divider()
 overview.render(df)
 
-st.divider()
+# -- 02 Time Series ----------------------------------------------------------
+styles.section_eyebrow("02 · Time Series")
+styles.section_title("Installations over time", emphasis="time")
+styles.section_divider()
 timeseries.render(df)
 
-st.divider()
+# -- 03 Financials -----------------------------------------------------------
+styles.section_eyebrow("03 · Financials")
+styles.section_title("Cost & incentive distribution", emphasis="incentive")
+styles.section_divider()
 financials.render(df)
 
-st.divider()
+# -- 04 Geography ------------------------------------------------------------
+styles.section_eyebrow("04 · Geography")
+styles.section_title("Regional deployment", emphasis="deployment")
+styles.section_divider()
 geo.render(df)
 
-st.divider()
+# -- 05 Sectors --------------------------------------------------------------
+styles.section_eyebrow("05 · Sectors")
+styles.section_title("Sector breakdown", emphasis="breakdown")
+styles.section_divider()
 sectors.render(df)
 
-st.divider()
+# -- 06 Contractors ----------------------------------------------------------
+styles.section_eyebrow("06 · Contractors")
+styles.section_title("Contractor leaderboard", emphasis="leaderboard")
+styles.section_divider()
 contractors.render(df)
+
+# -- Footer ------------------------------------------------------------------
+st.markdown(
+    "<div style='background:var(--primary,#003366); border-radius:12px; "
+    "padding:24px 40px; margin-top:64px; display:flex; justify-content:space-between; "
+    "align-items:center;'>"
+    "<span style='font-family:Fraunces,Georgia,serif; font-size:18px; color:white;'>"
+    "O<em style='color:#E8C46A;'>PB</em></span>"
+    "<span style='font-family:Plus Jakarta Sans,sans-serif; font-size:9px; "
+    "letter-spacing:3px; text-transform:uppercase; color:rgba(255,255,255,0.4);'>"
+    "Octavio Pérez Bravo &nbsp;·&nbsp; Data &amp; AI Strategy &nbsp;·&nbsp; "
+    "California Solar Initiative</span>"
+    "</div>",
+    unsafe_allow_html=True,
+)

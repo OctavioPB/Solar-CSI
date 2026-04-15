@@ -6,27 +6,20 @@ import plotly.express as px
 import streamlit as st
 
 import config
+import styles
 
 
 def render(df: pd.DataFrame) -> None:
-    st.header("Sector Analysis")
-
     if df.empty:
         st.warning("No records match the current filters.")
         return
 
     tab1, tab2 = st.tabs(["Sector Breakdown", "Average System Size"])
-
     with tab1:
         _sector_pies(df)
-
     with tab2:
         _avg_system_size(df)
 
-
-# ---------------------------------------------------------------------------
-# Tab charts
-# ---------------------------------------------------------------------------
 
 def _sector_pies(df: pd.DataFrame) -> None:
     col1, col2 = st.columns(2)
@@ -38,10 +31,13 @@ def _sector_pies(df: pd.DataFrame) -> None:
             owner,
             names="Sector",
             values="Count",
-            title="System Owner Sector",
-            hole=0.4,
+            title="System owner sector",
+            hole=0.45,
+            color_discrete_sequence=styles.BRAND_COLORS,
         )
-        fig.update_traces(textposition="inside", textinfo="percent+label")
+        fig.update_traces(textposition="inside", textinfo="percent+label",
+                          textfont=dict(family="Plus Jakarta Sans, sans-serif", size=11))
+        fig.update_layout(**styles.chart_layout())
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
@@ -51,10 +47,13 @@ def _sector_pies(df: pd.DataFrame) -> None:
             customer,
             names="Sector",
             values="Count",
-            title="Host Customer Sector",
-            hole=0.4,
+            title="Host customer sector",
+            hole=0.45,
+            color_discrete_sequence=styles.BRAND_COLORS,
         )
-        fig.update_traces(textposition="inside", textinfo="percent+label")
+        fig.update_traces(textposition="inside", textinfo="percent+label",
+                          textfont=dict(family="Plus Jakarta Sans, sans-serif", size=11))
+        fig.update_layout(**styles.chart_layout())
         st.plotly_chart(fig, use_container_width=True)
 
 
@@ -77,11 +76,17 @@ def _avg_system_size(df: pd.DataFrame) -> None:
         x="Avg (kW)",
         y="Sector",
         orientation="h",
-        title="Average Installed System Size by Sector (kW)",
+        title="Average installed system size by sector (kW)",
         text=agg["Avg (kW)"].apply(lambda v: f"{v:,.1f} kW"),
         color="Sector",
+        color_discrete_sequence=styles.BRAND_COLORS,
         hover_data=["Median (kW)", "# Systems"],
     )
     fig.update_traces(textposition="outside")
-    fig.update_layout(showlegend=False, xaxis_title="kW", yaxis_title="")
+    fig.update_layout(
+        **styles.chart_layout(),
+        showlegend=False,
+        xaxis_title="kW",
+        yaxis_title="",
+    )
     st.plotly_chart(fig, use_container_width=True)

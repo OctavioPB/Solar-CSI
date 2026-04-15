@@ -6,29 +6,22 @@ import plotly.express as px
 import streamlit as st
 
 import config
+import styles
 
 _DEFAULT_TOP_N = 10
 
 
 def render(df: pd.DataFrame) -> None:
-    st.header("Geographic Breakdown")
-
     if df.empty:
         st.warning("No records match the current filters.")
         return
 
     tab1, tab2 = st.tabs(["By City", "By County"])
-
     with tab1:
         _city_chart(df)
-
     with tab2:
         _county_chart(df)
 
-
-# ---------------------------------------------------------------------------
-# Tab charts
-# ---------------------------------------------------------------------------
 
 def _city_chart(df: pd.DataFrame) -> None:
     top_n = st.slider("Top N cities", min_value=5, max_value=30,
@@ -53,16 +46,16 @@ def _city_chart(df: pd.DataFrame) -> None:
         x="Installations",
         y="City",
         orientation="h",
-        title=f"Top {top_n} Cities by Installation Count",
+        title=f"Top {top_n} cities by installation count",
         text="Installations",
         color="Capacity_MW",
-        color_continuous_scale="YlOrRd",
+        color_continuous_scale=styles.BRAND_SCALE,
         hover_data={"Avg_Cost": ":$,.0f", "Capacity_MW": ":.2f"},
         labels={"Capacity_MW": "Capacity (MW)", "Avg_Cost": "Avg Cost (USD)"},
     )
     fig.update_traces(textposition="outside")
     fig.update_layout(
-        yaxis_title="",
+        **styles.chart_layout(),
         coloraxis_colorbar_title="MW",
         height=max(350, top_n * 30),
     )
@@ -87,41 +80,41 @@ def _county_chart(df: pd.DataFrame) -> None:
     col1, col2 = st.columns(2)
 
     with col1:
+        data = county_agg.sort_values("Installations", ascending=True)
         fig = px.bar(
-            county_agg.sort_values("Installations", ascending=True),
+            data,
             x="Installations",
             y="County",
             orientation="h",
-            title="Installations by County",
+            title="Installations by county",
             text="Installations",
             color="Installations",
-            color_continuous_scale="Blues",
+            color_continuous_scale=styles.BRAND_SCALE,
         )
         fig.update_traces(textposition="outside")
         fig.update_layout(
-            yaxis_title="",
+            **styles.chart_layout(),
             coloraxis_showscale=False,
             height=max(400, len(county_agg) * 28),
         )
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
+        data = county_agg.sort_values("Capacity_MW", ascending=True)
         fig = px.bar(
-            county_agg.sort_values("Capacity_MW", ascending=True),
+            data,
             x="Capacity_MW",
             y="County",
             orientation="h",
-            title="Installed Capacity by County (MW)",
-            text=county_agg.sort_values("Capacity_MW", ascending=True)["Capacity_MW"].apply(
-                lambda v: f"{v:.1f} MW"
-            ),
+            title="Installed capacity by county (MW)",
+            text=data["Capacity_MW"].apply(lambda v: f"{v:.1f} MW"),
             color="Capacity_MW",
-            color_continuous_scale="Oranges",
+            color_continuous_scale=styles.GOLD_SCALE,
             hover_data={"Total Incentive ($M)": True},
         )
         fig.update_traces(textposition="outside")
         fig.update_layout(
-            yaxis_title="",
+            **styles.chart_layout(),
             xaxis_title="MW",
             coloraxis_showscale=False,
             height=max(400, len(county_agg) * 28),

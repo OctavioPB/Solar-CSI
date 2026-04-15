@@ -6,14 +6,13 @@ import plotly.express as px
 import streamlit as st
 
 import config
+import styles
 
 _DEFAULT_TOP_N = 10
 _MAX_TOP_N = 50
 
 
 def render(df: pd.DataFrame) -> None:
-    st.header("Contractor Leaderboard")
-
     if df.empty:
         st.warning("No records match the current filters.")
         return
@@ -23,24 +22,19 @@ def render(df: pd.DataFrame) -> None:
         st.warning("No contractor data in this selection.")
         return
 
-    top_n = st.slider("Show top N contractors", min_value=5, max_value=_MAX_TOP_N,
-                      value=_DEFAULT_TOP_N, step=5)
+    top_n = st.slider("Show top N contractors", min_value=5,
+                      max_value=_MAX_TOP_N, value=_DEFAULT_TOP_N, step=5)
 
-    tab1, tab2, tab3 = st.tabs(["By Project Count", "By Total Capacity", "By Total Incentive"])
-
+    tab1, tab2, tab3 = st.tabs(
+        ["By Project Count", "By Total Capacity", "By Total Incentive"]
+    )
     with tab1:
         _leaderboard(valid, metric="count", top_n=top_n)
-
     with tab2:
         _leaderboard(valid, metric="capacity", top_n=top_n)
-
     with tab3:
         _leaderboard(valid, metric="incentive", top_n=top_n)
 
-
-# ---------------------------------------------------------------------------
-# Shared leaderboard renderer
-# ---------------------------------------------------------------------------
 
 def _leaderboard(df: pd.DataFrame, metric: str, top_n: int) -> None:
     agg = (
@@ -53,14 +47,14 @@ def _leaderboard(df: pd.DataFrame, metric: str, top_n: int) -> None:
         )
         .reset_index()
     )
-    agg["Capacity (MW)"] = (agg["Capacity_kW"] / 1_000).round(3)
+    agg["Capacity (MW)"]      = (agg["Capacity_kW"] / 1_000).round(3)
     agg["Total Incentive ($)"] = agg["Total_Incentive"].round(0).astype(int)
-    agg["Total Cost ($)"] = agg["Total_Cost"].round(0).astype(int)
+    agg["Total Cost ($)"]      = agg["Total_Cost"].round(0).astype(int)
     agg = agg.rename(columns={config.COL_CONTRACTOR: "Contractor"})
 
     sort_col, bar_col, bar_label = {
-        "count":     ("Projects",         "Projects",        "# Projects"),
-        "capacity":  ("Capacity (MW)",    "Capacity (MW)",   "Capacity (MW)"),
+        "count":     ("Projects",            "Projects",            "# Projects"),
+        "capacity":  ("Capacity (MW)",       "Capacity (MW)",       "Capacity (MW)"),
         "incentive": ("Total Incentive ($)", "Total Incentive ($)", "Total Incentive (USD)"),
     }[metric]
 
@@ -71,13 +65,14 @@ def _leaderboard(df: pd.DataFrame, metric: str, top_n: int) -> None:
         x=bar_col,
         y="Contractor",
         orientation="h",
-        title=f"Top {top_n} Contractors — {bar_label}",
+        title=f"Top {top_n} contractors — {bar_label}",
         text=top[bar_col].apply(lambda v: _fmt(v, metric)),
         color=bar_col,
-        color_continuous_scale="Blues",
+        color_continuous_scale=styles.BRAND_SCALE,
     )
     fig.update_traces(textposition="outside")
     fig.update_layout(
+        **styles.chart_layout(),
         showlegend=False,
         coloraxis_showscale=False,
         yaxis_title="",
@@ -85,7 +80,10 @@ def _leaderboard(df: pd.DataFrame, metric: str, top_n: int) -> None:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    display_cols = ["Contractor", "Projects", "Capacity (MW)", "Total Incentive ($)", "Total Cost ($)"]
+    display_cols = [
+        "Contractor", "Projects", "Capacity (MW)",
+        "Total Incentive ($)", "Total Cost ($)",
+    ]
     st.dataframe(
         top[display_cols].sort_values(sort_col, ascending=False).reset_index(drop=True),
         use_container_width=True,

@@ -6,11 +6,10 @@ import plotly.express as px
 import streamlit as st
 
 import config
+import styles
 
 
 def render(df: pd.DataFrame) -> None:
-    st.header("Installations Over Time")
-
     if df.empty:
         st.warning("No records match the current filters.")
         return
@@ -23,20 +22,13 @@ def render(df: pd.DataFrame) -> None:
     tab1, tab2, tab3 = st.tabs(
         ["Monthly Installations", "Cumulative Capacity", "Yearly by Status"]
     )
-
     with tab1:
         _monthly_installations(ts)
-
     with tab2:
         _cumulative_capacity(ts)
-
     with tab3:
         _yearly_by_status(ts)
 
-
-# ---------------------------------------------------------------------------
-# Tab charts
-# ---------------------------------------------------------------------------
 
 def _monthly_installations(df: pd.DataFrame) -> None:
     monthly = (
@@ -49,10 +41,12 @@ def _monthly_installations(df: pd.DataFrame) -> None:
         monthly,
         x=config.COL_YEAR_MONTH,
         y="Installations",
-        title="Completed Installations per Month",
+        title="Completed installations per month",
         labels={config.COL_YEAR_MONTH: "Month", "Installations": "# Installations"},
+        color_discrete_sequence=["#003366"],
     )
-    fig.update_layout(xaxis_tickangle=-45, xaxis={"tickmode": "auto", "nticks": 20})
+    fig.update_layout(**styles.chart_layout(), xaxis_tickangle=-45)
+    fig.update_xaxes(tickmode="auto", nticks=20, gridcolor="#E0EAF4")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -69,10 +63,13 @@ def _cumulative_capacity(df: pd.DataFrame) -> None:
         cap,
         x=config.COL_YEAR_MONTH,
         y="Cumulative MW",
-        title="Cumulative Installed Capacity (MW)",
+        title="Cumulative installed capacity (MW)",
         labels={config.COL_YEAR_MONTH: "Month", "Cumulative MW": "MW"},
+        color_discrete_sequence=["#003366"],
     )
-    fig.update_layout(xaxis_tickangle=-45, xaxis={"tickmode": "auto", "nticks": 20})
+    fig.update_traces(fillcolor="rgba(0,51,102,0.12)", line_color="#003366")
+    fig.update_layout(**styles.chart_layout(), xaxis_tickangle=-45)
+    fig.update_xaxes(tickmode="auto", nticks=20, gridcolor="#E0EAF4")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -84,13 +81,19 @@ def _yearly_by_status(df: pd.DataFrame) -> None:
         .reset_index(name="Count")
     )
     yearly[config.COL_YEAR] = yearly[config.COL_YEAR].astype(int)
+
+    # Semantic color map — status → brand color
+    color_map = styles.STATUS_COLORS
+
     fig = px.bar(
         yearly,
         x=config.COL_YEAR,
         y="Count",
         color=config.COL_STATUS,
-        title="Applications by Status per Year",
+        title="Applications by status per year",
         labels={config.COL_YEAR: "Year", "Count": "# Applications"},
         barmode="stack",
+        color_discrete_map=color_map,
     )
+    fig.update_layout(**styles.chart_layout())
     st.plotly_chart(fig, use_container_width=True)
