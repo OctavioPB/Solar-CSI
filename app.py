@@ -61,14 +61,13 @@ if df_full is None or df_filtered is None:
 # Sidebar
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown(
+    st.html(
         "<p style='font-family:Fraunces,Georgia,serif; font-size:22px; "
         "color:white; letter-spacing:-0.5px; margin:8px 0 4px;'>"
         "O<em style='color:#E8C46A;'>PB</em></p>"
         "<p style='font-family:Plus Jakarta Sans,sans-serif; font-size:9px; "
         "letter-spacing:3px; text-transform:uppercase; "
-        "color:rgba(255,255,255,0.4); margin:0 0 12px;'>CSI Analysis</p>",
-        unsafe_allow_html=True,
+        "color:rgba(255,255,255,0.4); margin:0 0 12px;'>CSI Analysis</p>"
     )
 
     # -- Download error banner -----------------------------------------------
@@ -208,8 +207,8 @@ styles.section_divider()
 contractors.render(df)
 
 # -- Footer ------------------------------------------------------------------
-st.markdown(
-    "<div style='background:var(--primary,#003366); border-radius:12px; "
+st.html(
+    "<div style='background:#003366; border-radius:12px; "
     "padding:24px 40px; margin-top:64px; display:flex; justify-content:space-between; "
     "align-items:center;'>"
     "<span style='font-family:Fraunces,Georgia,serif; font-size:18px; color:white;'>"
@@ -218,6 +217,5 @@ st.markdown(
     "letter-spacing:3px; text-transform:uppercase; color:rgba(255,255,255,0.4);'>"
     "Octavio Pérez Bravo &nbsp;·&nbsp; Data &amp; AI Strategy &nbsp;·&nbsp; "
     "California Solar Initiative</span>"
-    "</div>",
-    unsafe_allow_html=True,
+    "</div>"
 )

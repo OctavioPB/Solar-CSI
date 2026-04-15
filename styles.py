@@ -415,28 +415,31 @@ _SECTION_TITLE_TEMPLATE = """
 # ---------------------------------------------------------------------------
 
 def inject_brand() -> None:
-    """Inject CSS variables, Google Fonts, and Streamlit style overrides."""
+    """Inject CSS variables, Google Fonts, and Streamlit style overrides.
+    Uses st.markdown so the <style> block is injected into the parent page DOM,
+    not sandboxed — st.html() iframes its content and would isolate the styles.
+    """
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
 def navbar() -> None:
     """Render the OPB sticky navigation bar."""
-    st.markdown(_NAVBAR_HTML, unsafe_allow_html=True)
+    st.html(_NAVBAR_HTML)
 
 
 def hero(subtitle: str = "") -> None:
     """Render the dark blue hero header with grid texture."""
-    st.markdown(_HERO_TEMPLATE.format(subtitle=subtitle), unsafe_allow_html=True)
+    st.html(_HERO_TEMPLATE.format(subtitle=subtitle))
 
 
 def section_eyebrow(label: str) -> None:
     """Render a gold eyebrow label with leading horizontal rule."""
-    st.markdown(_EYEBROW_TEMPLATE.format(label=label), unsafe_allow_html=True)
+    st.html(_EYEBROW_TEMPLATE.format(label=label))
 
 
 def section_divider() -> None:
     """Render a branded gradient section divider."""
-    st.markdown(_DIVIDER_HTML, unsafe_allow_html=True)
+    st.html(_DIVIDER_HTML)
 
 
 def section_title(title: str, emphasis: str = "") -> None:
@@ -449,4 +452,4 @@ def section_title(title: str, emphasis: str = "") -> None:
             emphasis,
             f'<em style="font-style:italic;">{emphasis}</em>',
         )
-    st.markdown(_SECTION_TITLE_TEMPLATE.format(title=title), unsafe_allow_html=True)
+    st.html(_SECTION_TITLE_TEMPLATE.format(title=title))
