@@ -205,30 +205,6 @@ h3 {
 p, li { font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 15px !important; line-height: 1.7 !important; }
 .stCaption, caption { font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 12px !important; color: var(--mid) !important; }
 
-/* ── KPI metric cards ── */
-[data-testid="metric-container"] {
-    background: var(--white) !important;
-    border-radius: 12px !important;
-    padding: 24px 28px 20px !important;
-    border-top: 3px solid !important;
-    border-image: linear-gradient(90deg, var(--primary), var(--gold)) 1 !important;
-    box-shadow: 0 1px 6px rgba(0,51,102,0.08) !important;
-}
-[data-testid="metric-container"] [data-testid="stMetricValue"] {
-    font-family: 'Fraunces', Georgia, serif !important;
-    font-size: 30px !important;
-    font-weight: 300 !important;
-    color: var(--dark) !important;
-}
-[data-testid="metric-container"] [data-testid="stMetricLabel"] {
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    font-size: 10px !important;
-    font-weight: 500 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 2px !important;
-    color: var(--mid) !important;
-}
-
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"] {
     background: transparent !important;
